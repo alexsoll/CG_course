@@ -14,21 +14,10 @@
 #include "vtkPlane.h"
 #include "vtkClipDataSet.h"
 #include "vtkPointSource.h"
+#include <vtkImageCast.h>
 #include "vtkScalarBarActor.h"
-
-#include <vtkInteractorStyleTrackballCamera.h>
-#include <vtkLookupTable.h>
-#include <vtkNew.h>
-#include <vtkPlane.h>
-#include <vtkPointData.h>
-#include <vtkPointSource.h>
-#include <vtkPolyDataMapper.h>
+#include "vtkSphere.h"
 #include <vtkProperty.h>
-#include <vtkRenderer.h>
-#include <vtkRenderWindow.h>
-#include <vtkRenderWindowInteractor.h>
-#include "vtkImageGaussianSmooth.h"
-
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
 VTK_MODULE_INIT(vtkInteractionStyle)
@@ -38,7 +27,7 @@ int main(int argc, char** argv)
 	// Setup the reader
 	vtkSmartPointer<vtkXMLUnstructuredGridReader> reader =
 		vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
-	reader->SetFileName("C:\\Users\\alsol\\Documents\\Git\\CG_course\\data\\notch_disp.vtu");
+	reader->SetFileName(argv[1]);
 	reader->Update();
 
 	// Setup the renderer
@@ -56,15 +45,22 @@ int main(int argc, char** argv)
 	interact->SetRenderWindow(renWin.Get());
 	interact->SetInteractorStyle(style.Get());
 
+	// Clip
+	vtkSmartPointer<vtkSphere> sphere =
+		vtkSmartPointer<vtkSphere>::New();
+	sphere->SetCenter(0.1, 0.1, 0.1);
+	sphere->SetRadius(0.1);
 
-	/*vtkSmartPointer<vtkImageGaussianSmooth> gauss =
-		vtkSmartPointer<vtkImageGaussianSmooth>::New();
-	gauss->SetInputConnection(reader->GetOutputPort());
-	gauss->SetRadiusFactor(0.5);*/
+	vtkSmartPointer<vtkClipDataSet> clip =
+		vtkSmartPointer<vtkClipDataSet>::New();
+	clip->SetInputConnection(reader->GetOutputPort());
+	clip->SetClipFunction(sphere);
+	clip->InsideOutOff();
+	clip->Update();
 
 	// Mapper
 	vtkNew<vtkDataSetMapper> Mapper;
-	Mapper->SetInputConnection(reader->GetOutputPort());
+	Mapper->SetInputConnection(clip->GetOutputPort());
 	Mapper->SetScalarRange(reader->GetOutputAsDataSet()->GetScalarRange());
 	Mapper->InterpolateScalarsBeforeMappingOn();
 
@@ -81,18 +77,6 @@ int main(int argc, char** argv)
 	Actor->GetProperty()->SetColor(0.2, 0, 0.8);
 	renderer->AddActor(Actor.Get());
 	renderer->AddActor2D(scalarBar);
-
-	// **********************************************************************************************
-
-	//vtkNew<vtkDataSetMapper> pressureColorMapper;
-	//pressureColorMapper->SetInputConnection(clipperLeft->GetOutputPort());
-	//pressureColorMapper->SelectColorArray("Nodal Displacement");
-	//spressureColorMapper->SetScalarRange(pressureRange);
-
-	//vtkNew<vtkActor> pressureColorActor;
-	//pressureColorActor->SetMapper(pressureColorMapper.Get());
-	//pressureColorActor->GetProperty()->SetOpacity(0.5);
-	//renderer->AddActor(pressureColorActor.Get());
 
 	renWin->Render();
 	interact->Initialize();
