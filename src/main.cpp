@@ -14,6 +14,7 @@
 #include "vtkPlane.h"
 #include "vtkClipDataSet.h"
 #include "vtkPointSource.h"
+#include "vtkScalarBarActor.h"
 
 #include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkLookupTable.h>
@@ -26,6 +27,7 @@
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include "vtkImageGaussianSmooth.h"
 
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2)
@@ -36,7 +38,6 @@ int main(int argc, char** argv)
 	// Setup the reader
 	vtkSmartPointer<vtkXMLUnstructuredGridReader> reader =
 		vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
-	//reader->SetFileName("C:\\Users\\alsol\\Documents\\Git\\CG_course\\test_1\\data\\TriQuadraticHexahedron.vtu");
 	reader->SetFileName("C:\\Users\\alsol\\Documents\\Git\\CG_course\\data\\notch_disp.vtu");
 	reader->Update();
 
@@ -55,48 +56,31 @@ int main(int argc, char** argv)
 	interact->SetRenderWindow(renWin.Get());
 	interact->SetInteractorStyle(style.Get());
 
-	// Clip the left part from the input
-	vtkNew<vtkPlane> planeLeft;
-	planeLeft->SetOrigin(0.0, 0.0, 0.0);
-	planeLeft->SetNormal(-1.0, 0.0, 0.0);
 
-	vtkNew<vtkClipDataSet> clipperLeft;
-	clipperLeft->SetInputConnection(reader->GetOutputPort());
-	clipperLeft->SetClipFunction(planeLeft.Get());
+	/*vtkSmartPointer<vtkImageGaussianSmooth> gauss =
+		vtkSmartPointer<vtkImageGaussianSmooth>::New();
+	gauss->SetInputConnection(reader->GetOutputPort());
+	gauss->SetRadiusFactor(0.5);*/
 
+	// Mapper
+	vtkNew<vtkDataSetMapper> Mapper;
+	Mapper->SetInputConnection(reader->GetOutputPort());
+	Mapper->SetScalarRange(reader->GetOutputAsDataSet()->GetScalarRange());
+	Mapper->InterpolateScalarsBeforeMappingOn();
 
-	// Create Mapper and Actor for the left part
-	vtkNew<vtkDataSetMapper> leftWireMapper;
-	leftWireMapper->SetInputConnection(clipperLeft->GetOutputPort());
-	leftWireMapper->SetScalarRange(reader->GetOutputAsDataSet()->GetScalarRange());
-	leftWireMapper->InterpolateScalarsBeforeMappingOn();
+	//Scalar Bar
+	vtkSmartPointer<vtkScalarBarActor> scalarBar =
+		vtkSmartPointer<vtkScalarBarActor>::New();
+    scalarBar->SetLookupTable(Mapper->GetLookupTable());
+	scalarBar->SetTitle("Intensity");
+	scalarBar->SetNumberOfLabels(10);
 
-	vtkNew<vtkActor> leftWireActor;
-	leftWireActor->SetMapper(leftWireMapper.Get());
-	leftWireActor->GetProperty()->SetColor(0.2, 0, 0.8);
-	renderer->AddActor(leftWireActor.Get());
-
-
-	// Create Mapper and Actor for the right part
-	vtkNew<vtkPlane> planeRight;
-	planeRight->SetOrigin(0.0, 0.0, 0.0);
-	planeRight->SetNormal(1.0, 0.0, 0.0);
-
-	vtkNew<vtkClipDataSet> clipperRight;
-	clipperRight->SetInputConnection(reader->GetOutputPort());
-	clipperRight->SetClipFunction(planeRight.Get());
-
-	// Create the wireframe representation for the right part
-	vtkNew<vtkDataSetMapper> rightWireMapper;
-	rightWireMapper->SetInputConnection(clipperRight->GetOutputPort());
-	rightWireMapper->SetScalarRange(reader->GetOutputAsDataSet()->GetScalarRange());
-	rightWireMapper->InterpolateScalarsBeforeMappingOn();
-
-	vtkNew<vtkActor> rightWireActor;
-	rightWireActor->SetMapper(rightWireMapper.Get());
-	rightWireActor->GetProperty()->SetColor(0.2, 0, 1);
-	renderer->AddActor(rightWireActor.Get());
-
+	// Actor
+	vtkNew<vtkActor> Actor;
+	Actor->SetMapper(Mapper.Get());
+	Actor->GetProperty()->SetColor(0.2, 0, 0.8);
+	renderer->AddActor(Actor.Get());
+	renderer->AddActor2D(scalarBar);
 
 	// **********************************************************************************************
 
